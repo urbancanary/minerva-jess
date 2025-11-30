@@ -15,8 +15,8 @@ pip install -e .
 Create a `.env` file:
 
 ```env
-ORCA_URL=http://localhost:3000
-ORCA_TOKEN=your-token
+ORCA_URL=http://localhost:8080
+ORCA_TOKEN=your-token  # Optional, for authenticated APIs
 ```
 
 ### Agent Configuration
@@ -171,14 +171,15 @@ class JessAgent:
 ┌─────────────────────────────────────┐
 │          Minerva-Jess               │
 │  ┌───────────┐  ┌────────────────┐  │
-│  │ JessAgent │  │  Orca Client   │  │
+│  │ JessAgent │  │  HTTP Client   │  │
 │  └─────┬─────┘  └───────┬────────┘  │
 └────────┼────────────────┼───────────┘
          │                │
          └────────┬───────┘
+                  │ HTTP
                   ▼
         ┌─────────────────┐
-        │   Orca Gateway  │
+        │ Orca Video API  │
         └─────────────────┘
 ```
 
@@ -213,4 +214,5 @@ search:
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 PyYAML>=6.0.0
+httpx>=0.27.0
 ```
