@@ -1,0 +1,18 @@
+# Jess Agent Configuration
+# Copy this file to config.yaml and customize as needed
+
+# Agent identity - change these to rebrand
+agent:
+  name: "Jess"              # Display name for the agent
+  icon: "🎬"                # Emoji icon
+
+# Search settings
+search:
+  max_results: 10           # Maximum video segments to return
+  min_relevance: 0.0        # Minimum relevance score (0.0 - 1.0)
+
+# Response formatting
+response:
+  language: "en"            # Response language code
+  include_timestamps: true  # Include video timestamps in responses
+  include_urls: true        # Include video URLs in responses

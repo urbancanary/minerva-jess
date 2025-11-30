@@ -1,7 +1,7 @@
 """Tests for the Jess agent."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 
 from minerva_jess.agent import JessAgent
 from minerva_jess.models import AgentResponse, VideoSegment
@@ -14,69 +14,57 @@ class TestJessAgent:
     def mock_settings(self):
         """Create mock settings."""
         settings = MagicMock()
-        settings.anthropic_api_key = "test-key"
-        settings.minerva_mcp_url = "http://localhost:3000"
-        settings.minerva_mcp_token = None
-        settings.synthesis_model = "claude-haiku-4-5"
-        settings.max_synthesis_tokens = 1024
+        settings.orca_url = "http://localhost:3000"
+        settings.orca_token = None
         settings.max_search_results = 10
         settings.min_relevance_score = 0.0
+        settings.max_synthesis_tokens = 1024
         return settings
 
     @pytest.fixture
-    def mock_anthropic_client(self):
-        """Create mock Anthropic client."""
-        client = MagicMock()
-        response = MagicMock()
-        response.content = [MagicMock(text="Test response from Claude")]
-        client.messages.create.return_value = response
-        return client
+    def mock_config(self):
+        """Create mock agent config."""
+        config = MagicMock()
+        config.agent_name = "Jess"
+        config.agent_icon = "🎬"
+        config.language = "en"
+        config.include_timestamps = True
+        return config
 
-    def test_clean_query_removes_mention(self, mock_settings, mock_anthropic_client):
+    def test_clean_query_removes_mention(self, mock_settings, mock_config):
         """Test that @jess mention is removed from queries."""
-        agent = JessAgent(mock_settings, mock_anthropic_client)
+        agent = JessAgent(mock_settings, mock_config)
 
         assert agent._clean_query("@jess What about AI?") == "What about AI?"
         assert agent._clean_query("@JESS AI bubble") == "AI bubble"
         assert agent._clean_query("What about AI?") == "What about AI?"
 
-    def test_is_help_query_detection(self, mock_settings, mock_anthropic_client):
+    def test_is_help_query_detection(self, mock_settings, mock_config):
         """Test help query detection."""
-        agent = JessAgent(mock_settings, mock_anthropic_client)
+        agent = JessAgent(mock_settings, mock_config)
 
         # Should be detected as help queries
         assert agent._is_help_query("help")
         assert agent._is_help_query("What videos do you have?")
-        assert agent._is_help_query("Show me the most popular videos")
         assert agent._is_help_query("list videos")
 
         # Should NOT be detected as help queries
         assert not agent._is_help_query("What are AI bubble risks?")
         assert not agent._is_help_query("Tell me about ASEAN markets")
 
-    def test_extract_keywords(self, mock_settings, mock_anthropic_client):
-        """Test keyword extraction from queries."""
-        agent = JessAgent(mock_settings, mock_anthropic_client)
+    def test_agent_properties(self, mock_settings, mock_config):
+        """Test agent name and icon properties."""
+        agent = JessAgent(mock_settings, mock_config)
 
-        keywords = agent._extract_keywords("What did Andy say about AI bubbles?")
-        assert "bubbles" in keywords
-        assert "what" not in keywords  # Stop word
-        assert "about" not in keywords  # Stop word
-
-    def test_get_example_queries(self, mock_settings, mock_anthropic_client):
-        """Test example queries are returned."""
-        agent = JessAgent(mock_settings, mock_anthropic_client)
-
-        examples = agent._get_example_queries()
-        assert len(examples) > 0
-        assert all(isinstance(e, str) for e in examples)
+        assert agent.name == "Jess"
+        assert agent.icon == "🎬"
 
 
 class TestVideoSegment:
     """Test cases for VideoSegment model."""
 
-    def test_from_mcp_result(self):
-        """Test creating VideoSegment from MCP result."""
+    def test_from_search_result(self):
+        """Test creating VideoSegment from search result."""
         data = {
             "video_id": "abc123",
             "title": "Test Video",
@@ -86,7 +74,7 @@ class TestVideoSegment:
             "score": 0.85,
         }
 
-        segment = VideoSegment.from_mcp_result(data)
+        segment = VideoSegment.from_search_result(data)
 
         assert segment.video_id == "abc123"
         assert segment.title == "Test Video"

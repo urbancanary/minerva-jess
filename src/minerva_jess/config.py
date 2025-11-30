@@ -1,20 +1,21 @@
 """
-Configuration management for Minerva-Jess.
+Configuration for Minerva-Jess.
 
-Settings are loaded from environment variables with sensible defaults.
-Use a .env file for local development.
+Settings are loaded from environment variables and optional config.yaml file.
 """
 
 import logging
 from functools import lru_cache
+from pathlib import Path
 from typing import Optional
 
+import yaml
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    """Application settings from environment variables."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -23,101 +24,147 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Anthropic API
-    anthropic_api_key: str = Field(
-        ...,
-        description="Anthropic API key for Claude access",
-    )
-
-    # Minerva MCP Connection
-    minerva_mcp_url: str = Field(
+    # Orca connection
+    orca_url: str = Field(
         default="http://localhost:3000",
-        description="URL of the Minerva MCP server",
+        description="URL of the Orca gateway",
     )
-    minerva_mcp_token: Optional[str] = Field(
+    orca_token: Optional[str] = Field(
         default=None,
-        description="Authentication token for Minerva MCP (if required)",
+        description="Authentication token for Orca",
     )
 
-    # Model Configuration
-    synthesis_model: str = Field(
-        default="claude-haiku-4-5",
-        description="Claude model for answer synthesis",
+    # Search settings
+    max_search_results: int = Field(
+        default=10,
+        description="Maximum number of search results",
     )
+    min_relevance_score: float = Field(
+        default=0.0,
+        description="Minimum relevance score for results",
+    )
+
+    # Synthesis settings
     max_synthesis_tokens: int = Field(
         default=1024,
         description="Maximum tokens for synthesized answers",
     )
 
-    # Search Configuration
-    max_search_results: int = Field(
-        default=10,
-        description="Maximum number of search results to return",
-    )
-    min_relevance_score: float = Field(
-        default=0.0,
-        description="Minimum relevance score to include in results",
-    )
-
     # Logging
     log_level: str = Field(
         default="INFO",
-        description="Logging level (DEBUG, INFO, WARNING, ERROR)",
+        description="Logging level",
     )
 
     def configure_logging(self) -> None:
-        """Configure application logging based on settings."""
+        """Configure application logging."""
         logging.basicConfig(
             level=getattr(logging, self.log_level.upper(), logging.INFO),
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
         )
+
+
+class AgentConfig:
+    """
+    Agent configuration loaded from config.yaml.
+
+    This contains customizable settings that can be changed
+    without modifying code.
+    """
+
+    def __init__(self, config_path: Optional[Path] = None):
+        """
+        Load configuration from YAML file.
+
+        Args:
+            config_path: Path to config.yaml (defaults to ./config.yaml)
+        """
+        self._config: dict = {}
+
+        if config_path is None:
+            config_path = Path("config.yaml")
+
+        if config_path.exists():
+            with open(config_path) as f:
+                self._config = yaml.safe_load(f) or {}
+
+    # Agent identity
+    @property
+    def agent_name(self) -> str:
+        """Display name for the agent."""
+        return self._config.get("agent", {}).get("name", "Jess")
+
+    @property
+    def agent_icon(self) -> str:
+        """Icon/emoji for the agent."""
+        return self._config.get("agent", {}).get("icon", "🎬")
+
+    # Response settings
+    @property
+    def language(self) -> str:
+        """Response language."""
+        return self._config.get("response", {}).get("language", "en")
+
+    @property
+    def include_timestamps(self) -> bool:
+        """Whether to include timestamps in responses."""
+        return self._config.get("response", {}).get("include_timestamps", True)
+
+    @property
+    def include_urls(self) -> bool:
+        """Whether to include URLs in responses."""
+        return self._config.get("response", {}).get("include_urls", True)
+
+    # Search settings
+    @property
+    def max_results(self) -> int:
+        """Maximum search results to return."""
+        return self._config.get("search", {}).get("max_results", 10)
+
+    @property
+    def min_relevance(self) -> float:
+        """Minimum relevance threshold."""
+        return self._config.get("search", {}).get("min_relevance", 0.0)
 
 
 @lru_cache
 def get_settings() -> Settings:
-    """
-    Get cached application settings.
-
-    Uses LRU cache to ensure settings are only loaded once.
-    """
+    """Get cached application settings."""
     return Settings()
 
 
+@lru_cache
+def get_agent_config() -> AgentConfig:
+    """Get cached agent configuration."""
+    return AgentConfig()
+
+
 # Video catalog - metadata for known videos
-# This can be extended or loaded from an external source
 VIDEO_CATALOG: dict[str, dict] = {
     "SKfMmH9Bk4o": {
         "title": "Are we in an AI bubble?",
-        "topics": ["AI", "technology", "market bubble", "valuations", "Nvidia", "semiconductors"],
+        "topics": ["AI", "technology", "market bubble", "valuations", "Nvidia"],
         "publish_date": "2024-06-15",
         "view_count": 15420,
         "featured": True,
-        "description": "Discussion of AI market dynamics, valuation concerns, and sustainability.",
+        "description": "Discussion of AI market dynamics and valuation concerns.",
     },
     "AOVpTvMW6ro": {
         "title": "Governance, Growth and Volatility: Navigating ASEAN",
-        "topics": [
-            "ASEAN",
-            "emerging markets",
-            "governance",
-            "volatility",
-            "Southeast Asia",
-        ],
+        "topics": ["ASEAN", "emerging markets", "governance", "Southeast Asia"],
         "publish_date": "2024-05-22",
         "view_count": 8750,
         "featured": True,
-        "description": "Analysis of Southeast Asian markets and investment opportunities.",
+        "description": "Analysis of Southeast Asian markets and opportunities.",
     },
     "biVXxcjM4ws": {
         "title": "China R&D Surge: From fast follower to innovation powerhouse",
-        "topics": ["China", "R&D", "innovation", "technology", "patents", "EVs"],
+        "topics": ["China", "R&D", "innovation", "technology", "EVs"],
         "publish_date": "2024-04-10",
         "view_count": 12300,
         "featured": False,
         "description": "How China became a global innovation leader.",
     },
-    # Additional videos from batch transcription
     "J9izUotQ6Ls": {"title": "China's two-part strategy and the shifting global landscape"},
     "L5P2q3Ffazg": {"title": "Apple's dependence on China and the 'Catfish effect'"},
     "pLHDv--lr4U": {"title": "Fighting inflation with real assets"},

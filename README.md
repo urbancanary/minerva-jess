@@ -1,68 +1,44 @@
 # Minerva-Jess
 
-**Jess** is a Video Intelligence Agent that searches video libraries for insights on markets, investments, and financial strategy. Powered by [Minerva MCP](https://minerva.example.com) for video transcription and semantic search.
-
-## Features
-
-- **Semantic Video Search** - Find relevant content across video transcripts using natural language queries
-- **Answer Synthesis** - Get synthesized answers with video timestamps, powered by Claude
-- **Video Recommendations** - Discover videos by popularity, recency, or topic
-- **MCP Integration** - Clean separation via Model Context Protocol for Minerva communication
+Jess is a video intelligence SDK that enables semantic search across video libraries. It returns relevant video segments with precise timestamps for embedding.
 
 ## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourcompany/minerva-jess.git
-cd minerva-jess
-
-# Install with pip
 pip install -e .
-
-# Or with development dependencies
-pip install -e ".[dev]"
 ```
 
 ## Configuration
 
-Create a `.env` file in the project root:
+### Environment Variables
+
+Create a `.env` file:
 
 ```env
-# Required: Anthropic API key for Claude
-ANTHROPIC_API_KEY=sk-ant-...
+ORCA_URL=http://localhost:3000
+ORCA_TOKEN=your-token
+```
 
-# Minerva MCP server connection
-MINERVA_MCP_URL=http://localhost:3000
-MINERVA_MCP_TOKEN=your-token-here
+### Agent Configuration
 
-# Optional: Model configuration
-SYNTHESIS_MODEL=claude-haiku-4-5
-MAX_SYNTHESIS_TOKENS=1024
-MAX_SEARCH_RESULTS=10
+Create `config.yaml` to customize the agent:
 
-# Logging
-LOG_LEVEL=INFO
+```yaml
+agent:
+  name: "Jess"
+  icon: "🎬"
+
+search:
+  max_results: 10
+
+response:
+  language: "en"
+  include_timestamps: true
 ```
 
 ## Usage
 
-### Command Line
-
-```bash
-# Ask a question
-jess "What are the key risks in AI investments?"
-
-# List available videos
-jess --list-videos
-
-# Get recommendations
-jess --recommendations
-
-# Interactive mode
-jess --interactive
-```
-
-### Python API
+### Basic Search
 
 ```python
 import asyncio
@@ -72,89 +48,81 @@ async def main():
     settings = Settings()
     agent = JessAgent(settings)
 
-    # Search for insights
-    result = await agent.query("What did Andy say about AI bubbles?")
+    result = await agent.query("What are the risks in AI investments?")
+
     print(result.content)
 
-    # Get video recommendations
-    recommendations = await agent.get_recommendations()
-    print(recommendations.content)
+    if result.video_info:
+        print(f"Watch: {result.video_info['url']}")
 
 asyncio.run(main())
+```
+
+### Website Integration
+
+Return video embed information for your website:
+
+```python
+from minerva_jess import JessAgent, Settings
+
+async def search_videos(query: str) -> dict:
+    """Search videos and return embed info."""
+    settings = Settings()
+    agent = JessAgent(settings)
+
+    result = await agent.query(query)
+
+    if result.video_info:
+        return {
+            "video_id": result.video_info["video_id"],
+            "start_time": result.video_info["start_time"],
+            "timestamp": result.video_info["timestamp"],
+            "title": result.video_info["title"],
+            "summary": result.content
+        }
+
+    return {"error": "No matching videos found"}
+```
+
+**Frontend embed (JavaScript):**
+
+```javascript
+async function searchAndEmbed(query) {
+    const response = await fetch('/api/video-search', {
+        method: 'POST',
+        body: JSON.stringify({ query })
+    });
+
+    const data = await response.json();
+
+    if (data.video_id) {
+        const embedUrl = `https://www.youtube.com/embed/${data.video_id}?start=${data.start_time}`;
+        document.getElementById('player').innerHTML =
+            `<iframe src="${embedUrl}" frameborder="0" allowfullscreen></iframe>`;
+        document.getElementById('summary').innerText = data.summary;
+    }
+}
 ```
 
 ### Synchronous Usage
 
 ```python
-from minerva_jess.agent import JessAgentSync
+from minerva_jess import JessAgentSync
 
 agent = JessAgentSync()
-result = agent.query("ASEAN market outlook")
+result = agent.query("market outlook")
 print(result.content)
 ```
 
-## Architecture
+### Get Video Recommendations
 
-```
-minerva-jess/
-├── src/minerva_jess/
-│   ├── __init__.py      # Package exports
-│   ├── agent.py         # JessAgent - main intelligence agent
-│   ├── mcp_client.py    # MinervaMCPClient - Minerva communication
-│   ├── config.py        # Settings and configuration
-│   ├── models.py        # Pydantic data models
-│   └── cli.py           # Command-line interface
-├── tests/               # Test suite
-├── pyproject.toml       # Project configuration
-└── README.md
-```
+```python
+result = await agent.get_recommendations()
+print(result.content)
 
-### Key Components
-
-| Component | Description |
-|-----------|-------------|
-| `JessAgent` | Main agent class - processes queries, synthesizes answers |
-| `MinervaMCPClient` | MCP client for Minerva communication |
-| `Settings` | Configuration via environment variables |
-| `VideoSegment` | Search result with timestamp and transcript |
-| `AgentResponse` | Complete agent response with content and metadata |
-
-## Minerva MCP Integration
-
-Jess communicates with Minerva exclusively through MCP (Model Context Protocol). The following MCP tools are used:
-
-| Tool | Description |
-|------|-------------|
-| `minerva_search` | Semantic search across video transcripts |
-| `minerva_list_videos` | List available videos with metadata |
-| `minerva_get_video` | Get detailed video information |
-| `minerva_get_transcript` | Retrieve transcript segments |
-
-### MCP Connection
-
-Ensure the Minerva MCP server is running and accessible:
-
-```bash
-# Check connection
-curl http://localhost:3000/health
-
-# The client will connect automatically when queries are made
-```
-
-## Development
-
-```bash
-# Install dev dependencies
-pip install -e ".[dev]"
-
-# Run tests
-pytest
-
-# Type checking
-mypy src/minerva_jess
-
-# Linting
-ruff check src/
+# Or filter
+result = await agent.get_recommendations("popular")
+result = await agent.get_recommendations("latest")
 ```
 
 ## API Reference
@@ -164,26 +132,85 @@ ruff check src/
 ```python
 class JessAgent:
     async def query(self, user_query: str) -> AgentResponse:
-        """Process a user query and return a response."""
+        """Process a search query."""
 
     async def get_recommendations(self, query: str = "") -> AgentResponse:
-        """Get video recommendations based on query context."""
+        """Get video recommendations."""
 ```
 
 ### AgentResponse
 
+| Field | Type | Description |
+|-------|------|-------------|
+| `content` | `str` | Response text |
+| `success` | `bool` | Whether request succeeded |
+| `video_info` | `dict` | Video embed information |
+| `clickable_examples` | `list[str]` | Suggested queries |
+
+**video_info structure:**
+
 ```python
-class AgentResponse:
-    content: str              # Response text content
-    success: bool             # Whether the request succeeded
-    video_info: dict | None   # Video embed information
-    clickable_examples: list  # Suggested follow-up queries
+{
+    "video_id": "abc123",
+    "start_time": 125,
+    "timestamp": "2:05",
+    "title": "Video Title",
+    "url": "https://youtube.com/watch?v=abc123&t=125s"
+}
 ```
 
-## License
+## Architecture
 
-MIT License - see [LICENSE](LICENSE) for details.
+```
+┌─────────────────────────────────────┐
+│         Your Application            │
+│    (Website, API, Integration)      │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│          Minerva-Jess               │
+│  ┌───────────┐  ┌────────────────┐  │
+│  │ JessAgent │  │  Orca Client   │  │
+│  └─────┬─────┘  └───────┬────────┘  │
+└────────┼────────────────┼───────────┘
+         │                │
+         └────────┬───────┘
+                  ▼
+        ┌─────────────────┐
+        │   Orca Gateway  │
+        └─────────────────┘
+```
 
-## Support
+## Customization
 
-For issues and feature requests, please contact your account representative or open an issue in the repository.
+### Rebrand the Agent
+
+Edit `config.yaml`:
+
+```yaml
+agent:
+  name: "VideoBot"
+  icon: "📺"
+```
+
+### Adjust Search Results
+
+```yaml
+search:
+  max_results: 5
+  min_relevance: 0.3
+```
+
+## Requirements
+
+- Python 3.10+
+- Orca gateway access
+
+## Dependencies
+
+```
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+PyYAML>=6.0.0
+```
