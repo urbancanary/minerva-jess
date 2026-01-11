@@ -731,7 +731,10 @@
     <div class="chat-sidebar" id="chat-sidebar">
         <div class="chat-sidebar-header">
             <span class="chat-sidebar-title" id="chat-sidebar-title">Ask about this video</span>
-            <button class="chat-sidebar-close" id="chat-sidebar-close">&times;</button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <a href="#" id="chat-open-minerva" class="btn" style="font-size: 11px; padding: 4px 8px;" target="_blank" title="Open in Minerva for advanced analysis">Minerva</a>
+                <button class="chat-sidebar-close" id="chat-sidebar-close">&times;</button>
+            </div>
         </div>
         <div class="chat-messages" id="chat-messages">
             <!-- Messages will be added here -->
@@ -1235,12 +1238,20 @@
             chatMessages.innerHTML = '';
         }
 
+        const MINERVA_URL = 'https://minerva.x-trillion.com/';
+        const chatOpenMinerva = document.getElementById('chat-open-minerva');
+
         function openChatSidebar(videoId, videoTitle) {
             currentChatVideoId = videoId;
             currentChatVideoTitle = videoTitle;
             chatSidebarTitle.textContent = `Ask about: ${videoTitle.substring(0, 30)}${videoTitle.length > 30 ? '...' : ''}`;
             clearChatMessages();
             addChatMessage(`Ask me anything about "${videoTitle}"`, 'system');
+
+            // Set Minerva deep-link URL
+            const minervaDeepLink = `${MINERVA_URL}?agent=jess&video_id=${encodeURIComponent(videoId)}&title=${encodeURIComponent(videoTitle)}&sidebar=false`;
+            chatOpenMinerva.href = minervaDeepLink;
+
             chatSidebar.classList.add('open');
             chatOverlay.classList.add('open');
             document.body.style.overflow = 'hidden';
