@@ -237,6 +237,12 @@ def check_translation_status(job_id: str) -> dict:
 # API Endpoints
 # =============================================================================
 
+@app.get("/health")
+async def health():
+    """Health check endpoint for Railway."""
+    return {"status": "healthy", "service": "jess"}
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     """Serve the main HTML page."""
