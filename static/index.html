@@ -282,10 +282,117 @@
             background: #21262d;
         }
 
-        .chat-sidebar-iframe {
+        .chat-messages {
             flex: 1;
-            border: none;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-message {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .chat-message.user {
+            align-self: flex-end;
+            background: #238636;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-message.assistant {
+            align-self: flex-start;
+            background: #21262d;
+            color: #e6edf3;
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-message.system {
+            align-self: center;
+            background: transparent;
+            color: #8b949e;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .chat-input-container {
+            padding: 16px;
+            border-top: 1px solid #30363d;
             background: #0d1117;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #e6edf3;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .chat-input:focus {
+            border-color: #58a6ff;
+        }
+
+        .chat-input::placeholder {
+            color: #6e7681;
+        }
+
+        .chat-send-btn {
+            background: #238636;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .chat-send-btn:hover {
+            background: #2ea043;
+        }
+
+        .chat-send-btn:disabled {
+            background: #21262d;
+            cursor: not-allowed;
+        }
+
+        .chat-quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .chat-quick-btn {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 16px;
+            padding: 6px 12px;
+            color: #8b949e;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chat-quick-btn:hover {
+            background: #30363d;
+            color: #e6edf3;
+            border-color: #8b949e;
         }
 
         .chat-sidebar-overlay {
@@ -623,15 +730,23 @@
     <div class="chat-sidebar-overlay" id="chat-overlay"></div>
     <div class="chat-sidebar" id="chat-sidebar">
         <div class="chat-sidebar-header">
-            <span class="chat-sidebar-title" id="chat-sidebar-title">Ask Minerva</span>
+            <span class="chat-sidebar-title" id="chat-sidebar-title">Ask about this video</span>
             <button class="chat-sidebar-close" id="chat-sidebar-close">&times;</button>
         </div>
-        <iframe
-            id="chat-iframe"
-            class="chat-sidebar-iframe"
-            src="about:blank"
-            allow="microphone"
-        ></iframe>
+        <div class="chat-messages" id="chat-messages">
+            <!-- Messages will be added here -->
+        </div>
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <input type="text" class="chat-input" id="chat-input" placeholder="Ask a question about this video...">
+                <button class="chat-send-btn" id="chat-send-btn">Send</button>
+            </div>
+            <div class="chat-quick-actions" id="chat-quick-actions">
+                <button class="chat-quick-btn" data-question="Summarize this video">Summarize</button>
+                <button class="chat-quick-btn" data-question="What are the key takeaways?">Key takeaways</button>
+                <button class="chat-quick-btn" data-question="What topics are covered?">Topics</button>
+            </div>
+        </div>
     </div>
 
     <div class="container">
@@ -1096,31 +1211,94 @@
         }
 
         // Chat Sidebar Functions
-        const MINERVA_URL = 'https://minerva.x-trillion.com/';
         const chatSidebar = document.getElementById('chat-sidebar');
         const chatOverlay = document.getElementById('chat-overlay');
-        const chatIframe = document.getElementById('chat-iframe');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
         const chatSidebarTitle = document.getElementById('chat-sidebar-title');
         const chatSidebarClose = document.getElementById('chat-sidebar-close');
+        const chatQuickActions = document.getElementById('chat-quick-actions');
+
+        let currentChatVideoId = null;
+        let currentChatVideoTitle = null;
+
+        function addChatMessage(text, type = 'assistant') {
+            const msg = document.createElement('div');
+            msg.className = `chat-message ${type}`;
+            msg.textContent = text;
+            chatMessages.appendChild(msg);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function clearChatMessages() {
+            chatMessages.innerHTML = '';
+        }
 
         function openChatSidebar(videoId, videoTitle) {
-            // Build URL with video context (when deep linking is supported)
-            const url = `${MINERVA_URL}?video_id=${encodeURIComponent(videoId)}&title=${encodeURIComponent(videoTitle)}`;
-            chatIframe.src = MINERVA_URL; // Use base URL for now until deep linking is added
+            currentChatVideoId = videoId;
+            currentChatVideoTitle = videoTitle;
             chatSidebarTitle.textContent = `Ask about: ${videoTitle.substring(0, 30)}${videoTitle.length > 30 ? '...' : ''}`;
+            clearChatMessages();
+            addChatMessage(`Ask me anything about "${videoTitle}"`, 'system');
             chatSidebar.classList.add('open');
             chatOverlay.classList.add('open');
             document.body.style.overflow = 'hidden';
+            setTimeout(() => chatInput.focus(), 300);
         }
 
         function closeChatSidebar() {
             chatSidebar.classList.remove('open');
             chatOverlay.classList.remove('open');
             document.body.style.overflow = '';
-            // Clear iframe after animation
-            setTimeout(() => {
-                chatIframe.src = 'about:blank';
-            }, 300);
+            currentChatVideoId = null;
+            currentChatVideoTitle = null;
+        }
+
+        async function sendChatMessage(question) {
+            if (!question.trim() || !currentChatVideoId) return;
+
+            // Add user message
+            addChatMessage(question, 'user');
+            chatInput.value = '';
+            chatSendBtn.disabled = true;
+            chatInput.disabled = true;
+
+            // Add loading indicator
+            const loadingMsg = document.createElement('div');
+            loadingMsg.className = 'chat-message assistant';
+            loadingMsg.innerHTML = '<span class="spinner"></span> Thinking...';
+            chatMessages.appendChild(loadingMsg);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                const res = await fetch('/api/video/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        video_id: currentChatVideoId,
+                        question: question,
+                        title: currentChatVideoTitle
+                    })
+                });
+
+                loadingMsg.remove();
+
+                if (res.ok) {
+                    const data = await res.json();
+                    addChatMessage(data.answer, 'assistant');
+                } else {
+                    const err = await res.json();
+                    addChatMessage(`Sorry, I couldn't answer that: ${err.detail || 'Unknown error'}`, 'assistant');
+                }
+            } catch (err) {
+                loadingMsg.remove();
+                addChatMessage('Sorry, something went wrong. Please try again.', 'assistant');
+            }
+
+            chatSendBtn.disabled = false;
+            chatInput.disabled = false;
+            chatInput.focus();
         }
 
         function handleOpenChat(e) {
@@ -1129,6 +1307,23 @@
             const videoTitle = btn.dataset.videoTitle;
             openChatSidebar(videoId, videoTitle);
         }
+
+        // Chat event handlers
+        chatSendBtn.addEventListener('click', () => sendChatMessage(chatInput.value));
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage(chatInput.value);
+            }
+        });
+
+        // Quick action buttons
+        chatQuickActions.addEventListener('click', (e) => {
+            if (e.target.classList.contains('chat-quick-btn')) {
+                const question = e.target.dataset.question;
+                if (question) sendChatMessage(question);
+            }
+        });
 
         // Close sidebar handlers
         chatSidebarClose.addEventListener('click', closeChatSidebar);

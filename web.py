@@ -80,6 +80,12 @@ class TranslateRequest(BaseModel):
     language: str
 
 
+class VideoQuestionRequest(BaseModel):
+    video_id: str
+    question: str
+    title: Optional[str] = None
+
+
 # =============================================================================
 # Helper Functions (ported from app.py)
 # =============================================================================
@@ -716,5 +722,136 @@ async def get_video_summary(video_id: str, style: str = "brief"):
         "style": style,
         "summary": summary,
         "word_count": len(transcript.split()),
+        "url": f"https://www.youtube.com/watch?v={video_id}"
+    }
+
+
+# =============================================================================
+# Video Q&A Endpoint
+# =============================================================================
+
+def answer_video_question(transcript: str, title: str, question: str) -> str:
+    """Answer a question about the video using Claude."""
+    api_key = get_api_key("ANTHROPIC_API_KEY", requester="jess")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not available")
+
+    client = anthropic.Anthropic(api_key=api_key)
+
+    # Truncate transcript if too long
+    words = transcript.split()
+    if len(words) > 8000:
+        transcript = " ".join(words[:8000]) + "..."
+
+    prompt = f"""You are Jess, a helpful video intelligence assistant. Answer the user's question based on the video transcript below.
+
+Video Title: {title}
+
+Transcript:
+{transcript}
+
+User Question: {question}
+
+Provide a clear, helpful answer based on the video content. If the answer isn't in the transcript, say so politely. Keep your response concise but informative."""
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Claude API error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to answer question: {str(e)}")
+
+
+@app.post("/api/video/ask")
+async def ask_video_question(req: VideoQuestionRequest):
+    """
+    Ask a question about a specific video.
+
+    Args:
+        req: VideoQuestionRequest with video_id, question, and optional title
+
+    Returns:
+        Answer based on video transcript
+    """
+    video_id = req.video_id
+    question = req.question
+
+    if not question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
+
+    # Get transcript
+    stored = load_transcripts()
+
+    if video_id in stored and stored[video_id].get("transcript"):
+        transcript_data = stored[video_id]
+    else:
+        # Fetch transcript from Video MCP
+        try:
+            resp = requests.post(
+                f"{VIDEO_MCP_URL}/mcp/tools/call",
+                json={"name": "video_get_transcript", "arguments": {"video_id": video_id}},
+                timeout=30
+            )
+
+            if resp.status_code == 404:
+                raise HTTPException(status_code=404, detail="Transcript not available for this video")
+
+            resp.raise_for_status()
+            data = resp.json()
+
+            if "error" in data:
+                raise HTTPException(status_code=404, detail=data.get("error", "Transcript not found"))
+
+            # Extract transcript text
+            segments = data.get("segments", [])
+            if segments:
+                transcript_text = " ".join(seg.get("text", "") for seg in segments)
+            else:
+                transcript_text = data.get("transcript", data.get("text", ""))
+
+            if not transcript_text:
+                raise HTTPException(status_code=404, detail="No transcript content available")
+
+            # Get video title if not provided
+            title = req.title
+            if not title:
+                videos, _ = load_cached_videos()
+                for v in videos:
+                    if v.get("video_id") == video_id:
+                        title = v.get("title", "Unknown")
+                        break
+                if not title:
+                    title = "Unknown"
+
+            transcript_data = {
+                "video_id": video_id,
+                "title": title,
+                "transcript": transcript_text
+            }
+
+        except requests.exceptions.ConnectionError:
+            raise HTTPException(status_code=503, detail="Cannot connect to Video MCP")
+        except requests.exceptions.Timeout:
+            raise HTTPException(status_code=504, detail="Timeout fetching transcript")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # Get answer
+    title = req.title or transcript_data.get("title", "Unknown")
+    transcript = transcript_data.get("transcript", "")
+
+    answer = answer_video_question(transcript, title, question)
+
+    return {
+        "video_id": video_id,
+        "title": title,
+        "question": question,
+        "answer": answer,
         "url": f"https://www.youtube.com/watch?v={video_id}"
     }
