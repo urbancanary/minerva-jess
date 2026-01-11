@@ -233,6 +233,89 @@
             font-size: 12px;
         }
 
+        /* Chat Sidebar */
+        .chat-sidebar {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 450px;
+            height: 100vh;
+            background: #161b22;
+            border-left: 1px solid #30363d;
+            transition: right 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-sidebar.open {
+            right: 0;
+        }
+
+        .chat-sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            border-bottom: 1px solid #30363d;
+            background: #0d1117;
+        }
+
+        .chat-sidebar-title {
+            color: #e6edf3;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .chat-sidebar-close {
+            background: none;
+            border: none;
+            color: #8b949e;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .chat-sidebar-close:hover {
+            color: #e6edf3;
+            background: #21262d;
+        }
+
+        .chat-sidebar-iframe {
+            flex: 1;
+            border: none;
+            background: #0d1117;
+        }
+
+        .chat-sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .chat-sidebar-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .btn-chat {
+            background: #238636;
+            border-color: #238636;
+        }
+
+        .btn-chat:hover {
+            background: #2ea043;
+            border-color: #2ea043;
+        }
+
         /* Status Badges */
         .status-badge {
             display: inline-block;
@@ -466,6 +549,21 @@
     </style>
 </head>
 <body>
+    <!-- Chat Sidebar -->
+    <div class="chat-sidebar-overlay" id="chat-overlay"></div>
+    <div class="chat-sidebar" id="chat-sidebar">
+        <div class="chat-sidebar-header">
+            <span class="chat-sidebar-title" id="chat-sidebar-title">Ask Minerva</span>
+            <button class="chat-sidebar-close" id="chat-sidebar-close">&times;</button>
+        </div>
+        <iframe
+            id="chat-iframe"
+            class="chat-sidebar-iframe"
+            src="about:blank"
+            allow="microphone"
+        ></iframe>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <div class="header-card">
@@ -664,6 +762,9 @@
                         <button class="btn btn-primary translate-btn" data-video='${JSON.stringify(video).replace(/'/g, "\\'")}' ${translateDisabled}>
                             ${translateText}
                         </button>
+                        <button class="btn btn-chat chat-btn" data-video-id="${video.video_id}" data-video-title="${video.title.replace(/"/g, '&quot;')}">
+                            Chat
+                        </button>
                     </div>
                 </div>
             `;
@@ -685,6 +786,9 @@
             // Add click handlers
             document.querySelectorAll('.translate-btn').forEach(btn => {
                 btn.addEventListener('click', handleTranslate);
+            });
+            document.querySelectorAll('.chat-btn').forEach(btn => {
+                btn.addEventListener('click', handleOpenChat);
             });
         }
 
@@ -845,6 +949,50 @@
 
             btn.disabled = false;
             btn.innerHTML = '<span>Check Status</span>';
+        });
+
+        // Chat Sidebar Functions
+        const MINERVA_URL = 'https://minerva.x-trillion.com/';
+        const chatSidebar = document.getElementById('chat-sidebar');
+        const chatOverlay = document.getElementById('chat-overlay');
+        const chatIframe = document.getElementById('chat-iframe');
+        const chatSidebarTitle = document.getElementById('chat-sidebar-title');
+        const chatSidebarClose = document.getElementById('chat-sidebar-close');
+
+        function openChatSidebar(videoId, videoTitle) {
+            // Build URL with video context (when deep linking is supported)
+            const url = `${MINERVA_URL}?video_id=${encodeURIComponent(videoId)}&title=${encodeURIComponent(videoTitle)}`;
+            chatIframe.src = MINERVA_URL; // Use base URL for now until deep linking is added
+            chatSidebarTitle.textContent = `Ask about: ${videoTitle.substring(0, 30)}${videoTitle.length > 30 ? '...' : ''}`;
+            chatSidebar.classList.add('open');
+            chatOverlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeChatSidebar() {
+            chatSidebar.classList.remove('open');
+            chatOverlay.classList.remove('open');
+            document.body.style.overflow = '';
+            // Clear iframe after animation
+            setTimeout(() => {
+                chatIframe.src = 'about:blank';
+            }, 300);
+        }
+
+        function handleOpenChat(e) {
+            const btn = e.target;
+            const videoId = btn.dataset.videoId;
+            const videoTitle = btn.dataset.videoTitle;
+            openChatSidebar(videoId, videoTitle);
+        }
+
+        // Close sidebar handlers
+        chatSidebarClose.addEventListener('click', closeChatSidebar);
+        chatOverlay.addEventListener('click', closeChatSidebar);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && chatSidebar.classList.contains('open')) {
+                closeChatSidebar();
+            }
         });
 
         // Handle translate
