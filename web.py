@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 import requests
+import anthropic
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
@@ -565,4 +566,155 @@ async def fetch_all_transcripts():
         "already_stored": skipped,
         "total_stored": len(stored),
         "failures": failed[:5]
+    }
+
+
+# =============================================================================
+# Video Summary Endpoint
+# =============================================================================
+
+def generate_video_summary(transcript: str, title: str, style: str = "brief") -> str:
+    """Generate a summary of the video transcript using Claude."""
+    api_key = get_api_key("ANTHROPIC_API_KEY", requester="jess")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not available")
+
+    client = anthropic.Anthropic(api_key=api_key)
+
+    # Truncate transcript if too long (keep first ~8000 words)
+    words = transcript.split()
+    if len(words) > 8000:
+        transcript = " ".join(words[:8000]) + "..."
+
+    if style == "brief":
+        prompt = f"""Summarize this video transcript in 2-3 concise paragraphs. Focus on the key insights and main arguments.
+
+Video Title: {title}
+
+Transcript:
+{transcript}
+
+Provide a clear, professional summary that captures the essence of the video."""
+    elif style == "detailed":
+        prompt = f"""Provide a detailed summary of this video transcript including:
+1. Main topic and thesis
+2. Key points and arguments (bulleted)
+3. Notable quotes or insights
+4. Conclusion/takeaways
+
+Video Title: {title}
+
+Transcript:
+{transcript}"""
+    elif style == "bullets":
+        prompt = f"""Summarize this video transcript as 5-7 bullet points covering the main ideas.
+
+Video Title: {title}
+
+Transcript:
+{transcript}
+
+Use clear, concise bullet points."""
+    else:
+        prompt = f"""Summarize this video transcript concisely.
+
+Video Title: {title}
+
+Transcript:
+{transcript}"""
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Claude API error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate summary: {str(e)}")
+
+
+@app.get("/api/video/summary/{video_id}")
+async def get_video_summary(video_id: str, style: str = "brief"):
+    """
+    Generate a summary of a video.
+
+    Args:
+        video_id: YouTube video ID
+        style: Summary style - "brief" (2-3 paragraphs), "detailed" (structured),
+               or "bullets" (bullet points)
+
+    Returns:
+        Video summary with metadata
+    """
+    # First get the transcript
+    stored = load_transcripts()
+
+    if video_id in stored and stored[video_id].get("transcript"):
+        transcript_data = stored[video_id]
+    else:
+        # Fetch transcript from Video MCP
+        try:
+            resp = requests.post(
+                f"{VIDEO_MCP_URL}/mcp/tools/call",
+                json={"name": "video_get_transcript", "arguments": {"video_id": video_id}},
+                timeout=30
+            )
+
+            if resp.status_code == 404:
+                raise HTTPException(status_code=404, detail="Transcript not available for this video")
+
+            resp.raise_for_status()
+            data = resp.json()
+
+            if "error" in data:
+                raise HTTPException(status_code=404, detail=data.get("error", "Transcript not found"))
+
+            # Extract transcript text
+            segments = data.get("segments", [])
+            if segments:
+                transcript_text = " ".join(seg.get("text", "") for seg in segments)
+            else:
+                transcript_text = data.get("transcript", data.get("text", ""))
+
+            if not transcript_text:
+                raise HTTPException(status_code=404, detail="No transcript content available")
+
+            # Get video title
+            videos, _ = load_cached_videos()
+            video_title = "Unknown"
+            for v in videos:
+                if v.get("video_id") == video_id:
+                    video_title = v.get("title", "Unknown")
+                    break
+
+            transcript_data = {
+                "video_id": video_id,
+                "title": video_title,
+                "transcript": transcript_text
+            }
+
+        except requests.exceptions.ConnectionError:
+            raise HTTPException(status_code=503, detail="Cannot connect to Video MCP")
+        except requests.exceptions.Timeout:
+            raise HTTPException(status_code=504, detail="Timeout fetching transcript")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # Generate summary
+    title = transcript_data.get("title", "Unknown")
+    transcript = transcript_data.get("transcript", "")
+
+    summary = generate_video_summary(transcript, title, style)
+
+    return {
+        "video_id": video_id,
+        "title": title,
+        "style": style,
+        "summary": summary,
+        "word_count": len(transcript.split()),
+        "url": f"https://www.youtube.com/watch?v={video_id}"
     }
