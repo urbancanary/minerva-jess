@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # Orca connection
     orca_url: str = Field(
-        default="http://localhost:3000",
+        default="http://localhost:8080",
         description="URL of the Orca gateway",
     )
     orca_token: Optional[str] = Field(
