@@ -21,8 +21,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-# Add auth_mcp to path
-sys.path.insert(0, "/Users/andyseaman/Notebooks/mcp_central/auth_mcp")
+# Auth client for API keys
 from auth_client import get_api_key
 
 # Paths and config
