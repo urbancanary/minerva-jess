@@ -7,7 +7,9 @@
 ## Priority Tasks
 
 ### 1. Add Transcript Tool to Video MCP
-**Location**: `video-mcp.urbancanary.workers.dev`
+**Repo**: https://github.com/urbancanary/video-mcp
+**Local**: `/Users/andyseaman/Notebooks/mcp_central/video_mcp`
+**Deployed**: `video-mcp.urbancanary.workers.dev`
 
 Add a new tool `video_get_transcript` that returns the full transcript for a video:
 ```json
