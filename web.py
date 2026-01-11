@@ -6,6 +6,7 @@ Run with: uvicorn web:app --reload --port 8000
 """
 
 import json
+import logging
 import re
 import subprocess
 import sys
@@ -24,6 +25,10 @@ from pydantic import BaseModel
 # Auth client for API keys
 from auth_client import get_api_key
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Paths and config
 BASE_DIR = Path(__file__).parent
 CACHE_FILE = BASE_DIR / "data" / "videos_cache.json"
@@ -32,6 +37,12 @@ TRANSCRIPTS_FILE = BASE_DIR / "data" / "transcripts.json"
 STATIC_DIR = BASE_DIR / "static"
 ASSETS_DIR = BASE_DIR / "assets"
 CHANNEL_URL = "https://www.youtube.com/@GuinnessGI"
+
+# Ensure data directory exists
+(BASE_DIR / "data").mkdir(parents=True, exist_ok=True)
+
+logger.info(f"Starting Jess - BASE_DIR: {BASE_DIR}")
+logger.info(f"STATIC_DIR exists: {STATIC_DIR.exists()}, ASSETS_DIR exists: {ASSETS_DIR.exists()}")
 
 AVAILABLE_LANGUAGES = [
     "Spanish", "French", "German", "Italian",
@@ -52,8 +63,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount assets directory
-app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+# Mount assets directory (with safety check)
+if ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
 
 
 # =============================================================================
