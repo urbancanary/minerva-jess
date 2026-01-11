@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jess - Video Translation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header-card {
+            background: linear-gradient(135deg, #1a2332 0%, #0d1117 100%);
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .header-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid #30363d;
+        }
+
+        .header-info {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .header-title {
+            color: #e6edf3;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .header-subtitle {
+            color: #8b949e;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 12px 20px;
+            text-align: center;
+            min-width: 90px;
+        }
+
+        .stat-number {
+            color: #58a6ff;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .stat-label {
+            color: #8b949e;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 6px;
+            background: #161b22;
+            border-radius: 12px;
+            padding: 6px;
+            border: 1px solid #30363d;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            color: #8b949e;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab:hover {
+            background: #21262d;
+            color: #e6edf3;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(35, 134, 54, 0.3);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: #e6edf3;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: #30363d;
+            border-color: #8b949e;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+            border-color: #238636;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2ea043 0%, #3fb950 100%);
+        }
+
+        select {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: #e6edf3;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Video Grid */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .video-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            padding: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .video-card:hover {
+            border-color: #58a6ff;
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #21262d;
+        }
+
+        .video-title {
+            color: #e6edf3;
+            font-size: 13px;
+            font-weight: 500;
+            margin: 10px 0 4px 0;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .video-meta {
+            color: #8b949e;
+            font-size: 11px;
+            margin-bottom: 8px;
+        }
+
+        .video-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .video-actions .btn {
+            flex: 1;
+            justify-content: center;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 500;
+            margin-right: 6px;
+        }
+
+        .status-original {
+            background: #21262d;
+            color: #8b949e;
+        }
+
+        .status-processing {
+            background: #1f3a1f;
+            color: #3fb950;
+            animation: pulse 2s infinite;
+        }
+
+        .status-complete {
+            background: #0d419d;
+            color: #58a6ff;
+        }
+
+        .status-failed {
+            background: #3d1f1f;
+            color: #f85149;
+        }
+
+        .lang-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            background: #238636;
+            color: white;
+            margin: 2px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Library Section */
+        .language-section {
+            margin-bottom: 30px;
+        }
+
+        .language-title {
+            font-size: 18px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Transcript Styles */
+        .transcript-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            min-height: 500px;
+        }
+
+        .transcript-sidebar {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            padding: 12px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .transcript-video-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .transcript-video-item:hover {
+            background: #21262d;
+        }
+
+        .transcript-video-item.active {
+            background: #21262d;
+            border: 1px solid #58a6ff;
+        }
+
+        .transcript-video-item img {
+            width: 80px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .transcript-video-item .title {
+            font-size: 12px;
+            color: #e6edf3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .transcript-main {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .transcript-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .transcript-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .transcript-content {
+            line-height: 1.8;
+            color: #c9d1d9;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .transcript-placeholder {
+            color: #8b949e;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        /* Divider */
+        .divider {
+            border: none;
+            border-top: 1px solid #30363d;
+            margin: 20px 0;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #8b949e;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #30363d;
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 12px 20px;
+            color: #e6edf3;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success {
+            border-color: #238636;
+            background: #1f3a1f;
+        }
+
+        .toast.error {
+            border-color: #f85149;
+            background: #3d1f1f;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8b949e;
+        }
+
+        .empty-state h3 {
+            color: #e6edf3;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header-card">
+            <img src="/assets/jess.png" alt="Jess" class="header-avatar">
+            <div class="header-info">
+                <h1 class="header-title">Video Translation</h1>
+                <p class="header-subtitle">Guinness Global Investors - HeyGen Translation Tool</p>
+            </div>
+            <div class="header-stats">
+                <div class="stat-box">
+                    <div class="stat-number" id="stat-videos">-</div>
+                    <div class="stat-label">Videos</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="stat-translated">-</div>
+                    <div class="stat-label">Translated</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="stat-processing">-</div>
+                    <div class="stat-label">Processing</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="browse">Browse Videos</button>
+            <button class="tab" data-tab="library">Translation Library</button>
+            <button class="tab" data-tab="transcripts">Transcripts</button>
+        </div>
+
+        <!-- Browse Videos Tab -->
+        <div id="browse" class="tab-content active">
+            <div class="controls">
+                <button class="btn" id="refresh-btn">
+                    <span>Refresh Videos</span>
+                </button>
+                <button class="btn" id="check-status-btn">
+                    <span>Check Status</span>
+                </button>
+                <select id="language-select">
+                    <option value="Spanish">Spanish</option>
+                    <option value="French">French</option>
+                    <option value="German">German</option>
+                    <option value="Italian">Italian</option>
+                    <option value="Portuguese">Portuguese</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Polish">Polish</option>
+                </select>
+            </div>
+
+            <hr class="divider">
+
+            <div id="video-grid" class="video-grid">
+                <div class="loading"><span class="spinner"></span>Loading videos...</div>
+            </div>
+        </div>
+
+        <!-- Library Tab -->
+        <div id="library" class="tab-content">
+            <div class="controls">
+                <select id="library-filter">
+                    <option value="all">All Languages</option>
+                </select>
+            </div>
+
+            <hr class="divider">
+
+            <div id="library-content">
+                <div class="loading"><span class="spinner"></span>Loading translations...</div>
+            </div>
+        </div>
+
+        <!-- Transcripts Tab -->
+        <div id="transcripts" class="tab-content">
+            <div class="controls" style="margin-bottom: 16px;">
+                <button class="btn btn-primary" id="fetch-all-transcripts-btn">
+                    Fetch All from Orca
+                </button>
+                <span id="transcript-stats" style="color: #8b949e; margin-left: 12px;"></span>
+            </div>
+            <div class="transcript-container">
+                <div class="transcript-sidebar">
+                    <div style="margin-bottom: 12px; color: #8b949e; font-size: 12px;">Select a video</div>
+                    <div id="transcript-video-list">
+                        <div class="loading"><span class="spinner"></span></div>
+                    </div>
+                </div>
+                <div class="transcript-main">
+                    <div id="transcript-display">
+                        <div class="transcript-placeholder">
+                            <h3>Select a video to view its transcript</h3>
+                            <p style="margin-top: 8px;">YouTube captions will be fetched automatically</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let videos = [];
+        let translations = {};
+        let stats = { processing: 0, completed: 0 };
+        let currentTranscriptVideo = null;
+
+        // DOM Elements
+        const videoGrid = document.getElementById('video-grid');
+        const libraryContent = document.getElementById('library-content');
+        const languageSelect = document.getElementById('language-select');
+        const libraryFilter = document.getElementById('library-filter');
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Toast notification
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Format duration
+        function formatDuration(seconds) {
+            if (!seconds) return '';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Get translation status for a video
+        function getVideoStatus(videoId) {
+            if (!translations[videoId]) {
+                return { status: 'original', completedLangs: [] };
+            }
+            const trans = translations[videoId];
+            const completedLangs = [];
+            let hasProcessing = false;
+
+            for (const [lang, data] of Object.entries(trans.languages || {})) {
+                if (data.status === 'completed') {
+                    completedLangs.push(lang);
+                } else if (data.status === 'processing') {
+                    hasProcessing = true;
+                }
+            }
+
+            if (hasProcessing) {
+                return { status: 'processing', completedLangs };
+            } else if (completedLangs.length > 0) {
+                return { status: 'completed', completedLangs };
+            }
+            return { status: 'original', completedLangs };
+        }
+
+        // Render video card
+        function renderVideoCard(video) {
+            const { status, completedLangs } = getVideoStatus(video.video_id);
+            const thumbnailUrl = `https://i.ytimg.com/vi/${video.video_id}/hqdefault.jpg`;
+            const watchUrl = `https://www.youtube.com/watch?v=${video.video_id}`;
+            const duration = formatDuration(video.duration);
+
+            let statusHtml = '';
+            if (status === 'processing') {
+                statusHtml = '<span class="status-badge status-processing">Processing</span>';
+            } else if (completedLangs.length > 0) {
+                statusHtml = `<span class="status-badge status-complete">${completedLangs.length} lang</span>`;
+            } else {
+                statusHtml = '<span class="status-badge status-original">Original</span>';
+            }
+
+            const translateDisabled = status === 'processing' ? 'disabled' : '';
+            const translateText = status === 'processing' ? 'Processing...' : 'Translate';
+
+            return `
+                <div class="video-card" data-video-id="${video.video_id}">
+                    <a href="${watchUrl}" target="_blank">
+                        <img src="${thumbnailUrl}" alt="${video.title}" class="video-thumbnail"
+                             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 9%22><rect fill=%22%2321262d%22 width=%2216%22 height=%229%22/></svg>'">
+                    </a>
+                    <div class="video-title" title="${video.title}">${video.title}</div>
+                    <div class="video-meta">${duration}</div>
+                    ${statusHtml}
+                    <div class="video-actions">
+                        <button class="btn btn-primary translate-btn" data-video='${JSON.stringify(video).replace(/'/g, "\\'")}' ${translateDisabled}>
+                            ${translateText}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render video grid
+        function renderVideos() {
+            if (videos.length === 0) {
+                videoGrid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <h3>No videos found</h3>
+                        <p>Click "Refresh Videos" to load from YouTube</p>
+                    </div>
+                `;
+                return;
+            }
+            videoGrid.innerHTML = videos.map(renderVideoCard).join('');
+
+            // Add click handlers
+            document.querySelectorAll('.translate-btn').forEach(btn => {
+                btn.addEventListener('click', handleTranslate);
+            });
+        }
+
+        // Render library
+        function renderLibrary() {
+            const filterValue = libraryFilter.value;
+            const byLanguage = {};
+
+            for (const [videoId, trans] of Object.entries(translations)) {
+                for (const [lang, data] of Object.entries(trans.languages || {})) {
+                    if (filterValue !== 'all' && lang !== filterValue) continue;
+                    if (!byLanguage[lang]) byLanguage[lang] = [];
+                    byLanguage[lang].push({
+                        video_id: videoId,
+                        title: trans.title || 'Untitled',
+                        original_url: trans.original_url || `https://www.youtube.com/watch?v=${videoId}`,
+                        status: data.status,
+                        output_url: data.output_url,
+                        error: data.error
+                    });
+                }
+            }
+
+            if (Object.keys(byLanguage).length === 0) {
+                libraryContent.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No translations yet</h3>
+                        <p>Go to Browse Videos to submit videos for translation</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Update filter options
+            const currentFilter = libraryFilter.value;
+            libraryFilter.innerHTML = '<option value="all">All Languages</option>';
+            Object.keys(byLanguage).sort().forEach(lang => {
+                libraryFilter.innerHTML += `<option value="${lang}" ${lang === currentFilter ? 'selected' : ''}>${lang}</option>`;
+            });
+
+            let html = '';
+            for (const [lang, vids] of Object.entries(byLanguage)) {
+                html += `
+                    <div class="language-section">
+                        <h3 class="language-title">${lang}</h3>
+                        <div class="video-grid">
+                            ${vids.map(v => {
+                                const thumbnailUrl = `https://i.ytimg.com/vi/${v.video_id}/hqdefault.jpg`;
+                                let statusHtml = '';
+                                if (v.status === 'completed') {
+                                    statusHtml = '<span class="status-badge status-complete">Ready</span>';
+                                } else if (v.status === 'processing') {
+                                    statusHtml = '<span class="status-badge status-processing">Processing</span>';
+                                } else if (v.status === 'failed') {
+                                    statusHtml = `<span class="status-badge status-failed">Failed</span>`;
+                                }
+
+                                const translatedBtn = v.output_url
+                                    ? `<a href="${v.output_url}" target="_blank" class="btn btn-primary" style="flex:1;text-align:center;text-decoration:none;">${lang}</a>`
+                                    : `<button class="btn" disabled style="flex:1;">Not ready</button>`;
+
+                                return `
+                                    <div class="video-card">
+                                        <img src="${thumbnailUrl}" alt="${v.title}" class="video-thumbnail">
+                                        <div class="video-title" title="${v.title}">${v.title}</div>
+                                        ${statusHtml}
+                                        <div class="video-actions">
+                                            <a href="${v.original_url}" target="_blank" class="btn" style="flex:1;text-align:center;text-decoration:none;">Original</a>
+                                            ${translatedBtn}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            libraryContent.innerHTML = html;
+        }
+
+        // Update stats
+        function updateStats() {
+            document.getElementById('stat-videos').textContent = videos.length;
+            document.getElementById('stat-translated').textContent = stats.completed;
+            document.getElementById('stat-processing').textContent = stats.processing;
+        }
+
+        // Fetch videos
+        async function fetchVideos() {
+            try {
+                const res = await fetch('/api/videos');
+                const data = await res.json();
+                videos = data.videos || [];
+                renderVideos();
+                updateStats();
+            } catch (err) {
+                showToast('Failed to load videos', 'error');
+                videoGrid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><h3>Error loading videos</h3></div>';
+            }
+        }
+
+        // Fetch translations
+        async function fetchTranslations() {
+            try {
+                const res = await fetch('/api/translations');
+                const data = await res.json();
+                translations = data.translations || {};
+                stats = data.stats || { processing: 0, completed: 0 };
+                renderVideos();
+                renderLibrary();
+                updateStats();
+            } catch (err) {
+                showToast('Failed to load translations', 'error');
+            }
+        }
+
+        // Refresh videos
+        document.getElementById('refresh-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('refresh-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Refreshing...';
+
+            try {
+                const res = await fetch('/api/videos/refresh', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`Loaded ${data.count} videos`, 'success');
+                    await fetchVideos();
+                } else {
+                    showToast('Failed to refresh videos', 'error');
+                }
+            } catch (err) {
+                showToast('Failed to refresh videos', 'error');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<span>Refresh Videos</span>';
+        });
+
+        // Check status
+        document.getElementById('check-status-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('check-status-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Checking...';
+
+            try {
+                const res = await fetch('/api/translations/check', { method: 'POST' });
+                const data = await res.json();
+                if (data.updated) {
+                    showToast(`Updated ${data.updates.length} translations`, 'success');
+                    await fetchTranslations();
+                } else {
+                    showToast('No status changes', 'info');
+                }
+            } catch (err) {
+                showToast('Failed to check status', 'error');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<span>Check Status</span>';
+        });
+
+        // Handle translate
+        async function handleTranslate(e) {
+            const btn = e.target;
+            const video = JSON.parse(btn.dataset.video);
+            const language = languageSelect.value;
+
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
+
+            try {
+                const res = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        video_id: video.video_id,
+                        video_url: `https://www.youtube.com/watch?v=${video.video_id}`,
+                        title: video.title,
+                        language: language
+                    })
+                });
+
+                if (res.ok) {
+                    showToast(`Submitted for ${language} translation`, 'success');
+                    await fetchTranslations();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || 'Translation failed', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Translate';
+                }
+            } catch (err) {
+                showToast('Failed to submit translation', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Translate';
+            }
+        }
+
+        // Library filter
+        libraryFilter.addEventListener('change', renderLibrary);
+
+        // =====================================================================
+        // Transcripts Tab
+        // =====================================================================
+
+        const transcriptVideoList = document.getElementById('transcript-video-list');
+        const transcriptDisplay = document.getElementById('transcript-display');
+
+        // Render video list in transcript sidebar
+        function renderTranscriptVideoList() {
+            if (videos.length === 0) {
+                transcriptVideoList.innerHTML = '<div style="color: #8b949e; padding: 20px;">No videos loaded</div>';
+                return;
+            }
+
+            transcriptVideoList.innerHTML = videos.map(video => {
+                const thumbnailUrl = `https://i.ytimg.com/vi/${video.video_id}/hqdefault.jpg`;
+                const isActive = currentTranscriptVideo === video.video_id ? 'active' : '';
+                return `
+                    <div class="transcript-video-item ${isActive}" data-video-id="${video.video_id}" data-title="${video.title.replace(/"/g, '&quot;')}">
+                        <img src="${thumbnailUrl}" alt="">
+                        <div class="title">${video.title}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add click handlers
+            document.querySelectorAll('.transcript-video-item').forEach(item => {
+                item.addEventListener('click', () => loadTranscript(item.dataset.videoId, item.dataset.title));
+            });
+        }
+
+        // Load transcript for a video
+        async function loadTranscript(videoId, title) {
+            currentTranscriptVideo = videoId;
+            renderTranscriptVideoList(); // Update active state
+
+            transcriptDisplay.innerHTML = `
+                <div class="transcript-header">
+                    <div class="transcript-title">${title}</div>
+                    <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="btn">Watch Video</a>
+                </div>
+                <div class="transcript-content">
+                    <div class="loading"><span class="spinner"></span>Fetching transcript...</div>
+                </div>
+            `;
+
+            try {
+                const res = await fetch(`/api/transcript/${videoId}`);
+                const data = await res.json();
+
+                let content = '';
+                if (data.error) {
+                    content = `<div class="transcript-placeholder"><p>${data.error}</p></div>`;
+                } else if (data.transcript) {
+                    // Format transcript with paragraph breaks every ~500 chars
+                    const text = data.transcript;
+                    const paragraphs = [];
+                    let start = 0;
+                    while (start < text.length) {
+                        let end = start + 500;
+                        if (end < text.length) {
+                            // Find next sentence end
+                            const nextPeriod = text.indexOf('. ', end);
+                            if (nextPeriod !== -1 && nextPeriod < end + 100) {
+                                end = nextPeriod + 1;
+                            }
+                        } else {
+                            end = text.length;
+                        }
+                        paragraphs.push(text.slice(start, end).trim());
+                        start = end;
+                    }
+                    content = paragraphs.join('\n\n');
+                } else if (data.message) {
+                    content = `<div class="transcript-placeholder">
+                        <p>${data.message}</p>
+                        ${data.video_url ? `<a href="${data.video_url}" target="_blank" class="btn btn-primary" style="margin-top: 16px;">Watch Translated Video</a>` : ''}
+                    </div>`;
+                } else {
+                    content = '<div class="transcript-placeholder"><p>No transcript available</p></div>';
+                }
+
+                transcriptDisplay.innerHTML = `
+                    <div class="transcript-header">
+                        <div class="transcript-title">${title}</div>
+                        <div style="display: flex; gap: 8px;">
+                            <span class="status-badge" style="align-self: center;">${data.source || 'youtube'}</span>
+                            <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="btn">Watch Video</a>
+                        </div>
+                    </div>
+                    <div class="transcript-content">${content}</div>
+                `;
+            } catch (err) {
+                transcriptDisplay.innerHTML = `
+                    <div class="transcript-header">
+                        <div class="transcript-title">${title}</div>
+                    </div>
+                    <div class="transcript-content">
+                        <div class="transcript-placeholder"><p>Error loading transcript</p></div>
+                    </div>
+                `;
+            }
+        }
+
+        // Update transcript video list when videos are loaded
+        const originalFetchVideos = fetchVideos;
+        fetchVideos = async function() {
+            await originalFetchVideos();
+            renderTranscriptVideoList();
+            updateTranscriptStats();
+        };
+
+        // Fetch stored transcript stats
+        async function updateTranscriptStats() {
+            try {
+                const res = await fetch('/api/transcripts');
+                const data = await res.json();
+                const count = data.count || 0;
+                document.getElementById('transcript-stats').textContent =
+                    `${count} transcript${count !== 1 ? 's' : ''} stored`;
+            } catch (err) {
+                // Ignore
+            }
+        }
+
+        // Fetch all transcripts from Orca
+        document.getElementById('fetch-all-transcripts-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('fetch-all-transcripts-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Fetching...';
+
+            try {
+                const res = await fetch('/api/transcripts/fetch-all', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                } else {
+                    showToast(`Fetched ${data.fetched} transcripts (${data.already_stored} already stored)`, 'success');
+                    updateTranscriptStats();
+                }
+            } catch (err) {
+                showToast('Failed to fetch transcripts', 'error');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = 'Fetch All from Orca';
+        });
+
+        // Initial load
+        fetchVideos();
+        fetchTranslations();
+    </script>
+</body>
+</html>
