@@ -39,8 +39,8 @@ AVAILABLE_LANGUAGES = [
     "Portuguese", "Japanese", "Hindi", "Polish",
 ]
 
-# Orca API for transcripts
-ORCA_URL = "https://orca-mcp-production.up.railway.app"
+# Video MCP for transcripts (TODO: route through Orca long-term)
+VIDEO_MCP_URL = "https://video-mcp.urbancanary.workers.dev"
 
 # FastAPI app
 app = FastAPI(title="Jess Video Gallery")
@@ -405,23 +405,36 @@ async def get_transcript(video_id: str, lang: Optional[str] = None, refresh: boo
             video_title = v.get("title", "Unknown")
             break
 
-    # Fetch from Orca API
+    # Fetch from Video MCP
     try:
-        resp = requests.get(f"{ORCA_URL}/video/transcript/{video_id}", timeout=30)
+        resp = requests.post(
+            f"{VIDEO_MCP_URL}/mcp/tools/call",
+            json={"name": "video_get_transcript", "arguments": {"video_id": video_id}},
+            timeout=30
+        )
 
         if resp.status_code == 404:
             return {
                 "video_id": video_id,
-                "source": "orca",
+                "source": "video_mcp",
                 "language": "en",
                 "transcript": None,
-                "error": "Transcript not available in Orca"
+                "error": "Transcript not available"
             }
 
         resp.raise_for_status()
         data = resp.json()
 
-        # Extract transcript text - Orca returns segments with text
+        if "error" in data:
+            return {
+                "video_id": video_id,
+                "source": "video_mcp",
+                "language": "en",
+                "transcript": None,
+                "error": data.get("error", "Unknown error")
+            }
+
+        # Extract transcript text - MCP returns segments with text
         segments = data.get("segments", [])
         if segments:
             transcript_text = " ".join(seg.get("text", "") for seg in segments)
@@ -431,7 +444,7 @@ async def get_transcript(video_id: str, lang: Optional[str] = None, refresh: boo
         if not transcript_text:
             return {
                 "video_id": video_id,
-                "source": "orca",
+                "source": "video_mcp",
                 "language": "en",
                 "transcript": None,
                 "error": "No transcript content in response"
@@ -441,7 +454,7 @@ async def get_transcript(video_id: str, lang: Optional[str] = None, refresh: boo
         result = {
             "video_id": video_id,
             "title": video_title,
-            "source": "orca",
+            "source": "video_mcp",
             "language": "en",
             "transcript": transcript_text,
             "fetched_at": datetime.now().isoformat(),
@@ -456,9 +469,9 @@ async def get_transcript(video_id: str, lang: Optional[str] = None, refresh: boo
         return result
 
     except requests.exceptions.ConnectionError:
-        raise HTTPException(status_code=503, detail="Cannot connect to Orca API - is it running?")
+        raise HTTPException(status_code=503, detail="Cannot connect to Video MCP")
     except requests.exceptions.Timeout:
-        raise HTTPException(status_code=504, detail="Timeout fetching transcript from Orca")
+        raise HTTPException(status_code=504, detail="Timeout fetching transcript")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -482,14 +495,22 @@ async def fetch_all_transcripts():
             continue
 
         try:
-            resp = requests.get(f"{ORCA_URL}/video/transcript/{video_id}", timeout=30)
+            resp = requests.post(
+                f"{VIDEO_MCP_URL}/mcp/tools/call",
+                json={"name": "video_get_transcript", "arguments": {"video_id": video_id}},
+                timeout=30
+            )
 
             if resp.status_code == 404:
-                failed.append({"video_id": video_id, "error": "Not in Orca"})
+                failed.append({"video_id": video_id, "error": "Not found"})
                 continue
 
             resp.raise_for_status()
             data = resp.json()
+
+            if "error" in data:
+                failed.append({"video_id": video_id, "error": data.get("error", "Unknown")})
+                continue
 
             # Extract transcript text
             segments = data.get("segments", [])
@@ -502,7 +523,7 @@ async def fetch_all_transcripts():
                 stored[video_id] = {
                     "video_id": video_id,
                     "title": video.get("title", "Unknown"),
-                    "source": "orca",
+                    "source": "video_mcp",
                     "language": "en",
                     "transcript": transcript_text,
                     "fetched_at": datetime.now().isoformat(),
@@ -513,7 +534,7 @@ async def fetch_all_transcripts():
                 failed.append({"video_id": video_id, "error": "Empty transcript"})
 
         except requests.exceptions.ConnectionError:
-            return {"error": "Cannot connect to Orca API - is it running?"}
+            return {"error": "Cannot connect to Video MCP"}
         except Exception as e:
             failed.append({"video_id": video_id, "error": str(e)})
 
